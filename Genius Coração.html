@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Genius Coração</title>
+<style>
+/* Cores do tema claro/escuro */
+:root{--bg:#f4f1ec;--fg:#1d1d1f;--heart:#2b2f36;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16181d;--fg:#f2f2f2}}
+:root[data-theme="dark"]{--bg:#16181d;--fg:#f2f2f2}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0}
+h1{margin:0;font-size:1.2rem}
+/* O coração ocupa a largura da tela e mantém a proporção */
+.heart{position:relative;width:min(94vw,calc(70vh*1.1111));aspect-ratio:100/90;container-type:inline-size}
+.heart svg{position:absolute;inset:0;width:100%;height:100%}
+/* Ovais: posição e tamanho em % do coração (assim se adaptam a qualquer tela) */
+.oval{position:absolute;border:0;border-radius:50%;color:#fff;background:var(--c);font:700 clamp(18px,6vmin,40px)/1 system-ui,sans-serif;text-shadow:0 0 3px #000,0 0 3px #000;opacity:.8;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.oval.on{opacity:1;transform:scale(1.05);box-shadow:0 0 30px 10px var(--c)}
+.oval:focus-visible{outline:4px solid #fff;outline-offset:2px}
+.verde{--c:#2fb34f;left:12%;top:24%;width:16%;height:34%}
+.amarelo{--c:#f2c230;left:33%;top:17%;width:34%;height:16%}
+.vermelho{--c:#d93a3a;left:72%;top:24%;width:16%;height:34%}
+.azul{--c:#1f78b4;left:33%;top:59%;width:34%;height:16%}
+/* Display estilo LCD 16x2 no centro */
+.lcd{position:absolute;left:30%;top:34%;width:40%;height:19%;background:#2a52be;color:#eef3ff;font:3.4cqw/1.5 ui-monospace,Consolas,monospace;white-space:pre;overflow:hidden;border-radius:4px;display:flex;flex-direction:column;justify-content:center;padding:0 2%;box-sizing:border-box}
+/* Texto maior embaixo: mesma mensagem do display, legível no celular */
+#status{margin:0;padding:0 12px;text-align:center;font-size:1.1rem;min-height:3em;max-width:36rem}
+.ctl{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;font-size:.9rem}
+#som{font:inherit;padding:10px 16px;min-height:48px;border-radius:8px;border:1px solid var(--fg);background:transparent;color:var(--fg);cursor:pointer}
+</style>
+</head>
+<body>
+<h1>Genius Coração</h1>
+<div class="heart">
+  <svg viewBox="0 0 100 90" aria-hidden="true"><path d="M50 85C10 55 0 35 0 22C0 8 12 0 25 0C37 0 46 7 50 15C54 7 63 0 75 0C88 0 100 8 100 22C100 35 90 55 50 85Z" fill="var(--heart)"/></svg>
+  <button class="oval verde" aria-label="Oval 1, verde">1</button>
+  <button class="oval amarelo" aria-label="Oval 2, amarelo">2</button>
+  <button class="oval vermelho" aria-label="Oval 3, vermelho">3</button>
+  <button class="oval azul" aria-label="Oval 4, azul">4</button>
+  <div class="lcd" aria-hidden="true"><div id="l1"></div><div id="l2"></div></div>
+</div>
+<p id="status" aria-live="polite"></p>
+<div class="ctl"><button id="som" aria-pressed="true">Som: ligado</button><span>Teclado: teclas 1 a 4</span></div>
+
+<script>
+// ===== 1. Variáveis de estado do jogo =====
+const MAX_RODADAS = 8;                  // o jogo acaba na rodada 8
+const TONS = [880, 440, 392, 294];      // uma nota para cada oval (Hz)
+let numJog = 1;                         // quantidade de jogadores (1 a 4)
+let pontos = [], ativo = [], seq = [];  // pontos, quem ainda joga, sequência de cada jogador
+let rodada = 0, somLigado = true, esperando = null, ctx = null;
+const botoes = [...document.querySelectorAll('.oval')];
+const dormir = ms => new Promise(r => setTimeout(r, ms));
+
+// ===== 2. Display e som =====
+function tela(l1, l2 = '') {
+  document.getElementById('l1').textContent = l1;
+  document.getElementById('l2').textContent = l2;
+  document.getElementById('status').textContent = l1 + '. ' + l2;
+}
+function iniciarAudio() {               // o navegador só libera o som após um toque do usuário
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === 'suspended') ctx.resume();
+}
+function tocar(i, ms) {
+  if (!somLigado || !ctx) return;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'triangle'; o.frequency.value = TONS[i]; g.gain.value = 0.2;
+  o.connect(g); g.connect(ctx.destination);
+  o.start(); o.stop(ctx.currentTime + ms / 1000);
+}
+async function piscar(i, ms) {          // acende o oval e toca a nota ao mesmo tempo
+  botoes[i].classList.add('on'); tocar(i, ms);
+  await dormir(ms);
+  botoes[i].classList.remove('on');
+}
+async function somDeErro() { for (let k = 0; k < 4; k++) await piscar(k, 150); }
+
+// ===== 3. Entradas: toque, mouse (pointer) e teclado =====
+function esperar() { return new Promise(r => { esperando = r; }); }  // aguarda o próximo aperto
+function apertar(i) {
+  iniciarAudio();
+  if (esperando) { const r = esperando; esperando = null; r(i); }    // ignora aperto fora da vez
+}
+botoes.forEach((b, i) => {
+  b.addEventListener('pointerdown', e => { e.preventDefault(); apertar(i); });
+  b.addEventListener('click', e => { if (e.detail === 0) apertar(i); });  // Enter/Espaço no botão focado
+});
+addEventListener('keydown', e => {
+  const i = '1234'.indexOf(e.key);
+  if (i >= 0 && !e.repeat) apertar(i);
+});
+document.getElementById('som').addEventListener('click', e => {
+  somLigado = !somLigado;
+  e.target.textContent = 'Som: ' + (somLigado ? 'ligado' : 'desligado');
+  e.target.setAttribute('aria-pressed', somLigado);
+});
+
+// ===== 4. A vez de um jogador =====
+// Mostra a sequência dele, espera ele repetir e devolve quantos passos acertou.
+async function vez(j, contaPontos) {
+  const cab = `Rodada ${rodada} - J${j + 1}`;
+  tela(cab, 'Observe...'); await dormir(1000);
+  for (const c of seq[j]) { await piscar(c, 500); await dormir(100); }
+  tela(cab, 'Sua vez!  P:' + pontos[j]);
+  for (let i = 0; i < rodada; i++) {
+    const b = await esperar();
+    await piscar(b, 300);
+    if (b !== seq[j][i]) {              // errou: sai da disputa, mas guarda os pontos
+      tela(`J${j + 1} errou!`, 'Pontos: ' + pontos[j]);
+      await somDeErro(); await dormir(1500);
+      return i;
+    }
+    if (contaPontos) pontos[j]++;       // cada acerto vale 1 ponto
+    tela(cab, 'Sua vez!  P:' + pontos[j]);
+  }
+  tela(`J${j + 1} acertou!`, 'Pontos: ' + pontos[j]); await dormir(1500);
+  return rodada;
+}
+
+// ===== 5. Partida completa =====
+async function jogo() {
+  while (true) {
+    // Escolha da quantidade de jogadores: toca no oval 1 a 4
+    tela('N de jogadores?', 'Toque no oval 1 a 4');
+    const n = await esperar(); await piscar(n, 300);
+    numJog = n + 1;
+    pontos = Array(numJog).fill(0);
+    ativo = Array(numJog).fill(true);
+    seq = Array.from({ length: numJog }, () => []);
+    rodada = 0;
+    tela('Jogadores: ' + numJog, 'Boa sorte!'); await dormir(1500);
+
+    const vivos = () => ativo.filter(Boolean).length;
+    // Cada rodada: cada jogador ganha UMA cor nova só dele (sequências independentes)
+    const nova = () => { seq.forEach(s => s.push(Math.floor(Math.random() * 4))); rodada++; };
+
+    // Termina na rodada 8 ou quando sobra só um jogador (sozinho, quando ele erra)
+    while (rodada < MAX_RODADAS && (numJog === 1 ? vivos() === 1 : vivos() > 1)) {
+      nova();
+      for (let j = 0; j < numJog; j++) {
+        if (ativo[j] && await vez(j, true) < rodada) ativo[j] = false;
+      }
+    }
+
+    // Vencedor = maior pontuação. Se houver empate, entra o desempate.
+    const maior = Math.max(...pontos);
+    const emp = pontos.map((p, j) => p === maior ? j : -1).filter(j => j >= 0);
+    let venc = emp[0], desempate = false;
+    if (numJog > 1 && emp.length > 1) {
+      desempate = true;
+      ativo = ativo.map((_, j) => emp.includes(j));   // só os empatados continuam
+      while (vivos() > 1 && rodada < 100) {
+        tela('Desempate!', 'Preparem-se...'); await dormir(2000);
+        nova();
+        const ac = [];                                // passos acertados (sem somar pontos)
+        for (let j = 0; j < numJog; j++) if (ativo[j]) ac[j] = await vez(j, false);
+        const m = Math.max(...ac.filter(x => x !== undefined));
+        for (let j = 0; j < numJog; j++) if (ativo[j] && ac[j] < m) ativo[j] = false;
+      }
+      venc = vivos() === 1 ? ativo.indexOf(true) : -1;
+    }
+
+    // Resultado e placar final
+    if (numJog === 1) tela(rodada >= MAX_RODADAS && ativo[0] ? 'Você venceu!' : 'Fim de jogo!', 'Pontos: ' + pontos[0]);
+    else if (venc >= 0) tela('Vencedor: J' + (venc + 1), desempate ? 'No desempate!' : 'Pontos: ' + maior);
+    else tela('Empate total!');
+    await dormir(2500);
+    if (numJog > 1) {
+      const p = j => j < numJog ? `J${j + 1}:${pontos[j]}` : '';
+      tela(`${p(0)}  ${p(1)}`, `${p(2)}  ${p(3)}`.trim()); await dormir(5000);
+    }
+    tela('Toque num oval', 'p/ jogar de novo');
+    await esperar();
+  }
+}
+jogo();
+</script>
+</body>
+</html>
