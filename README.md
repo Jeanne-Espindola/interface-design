@@ -23,10 +23,10 @@ O **Genius Coração** é uma aplicação web interativa desenvolvida como proje
 
 * **Modo Multijogador Local:** Suporte para partidas individuais ou em grupo (**1 a 4 jogadores**).
 * **Acessibilidade Inclusiva:**
-  * **Visual:** Botões ovais de alto contraste com dupla codificação (cores distintas acompanhadas de numeração explícita de `1` a `4`), auxiliando jogadores com daltonismo[cite: 3].
-  * **Motora:** Suporte completo à interação via **toque** (mobile/tablet), **mouse** e **teclado numérico** (teclas `1` a `4`)[cite: 3].
-  * **Sonora:** Feedback audiovisual sincronizado com botão dedicado para ativar ou silenciar o som (`Som: ligado/desligado`) em ambientes compartilhados[cite: 3].
-* **Design Responsivo:** Layout centralizado e adaptável para desktops, notebooks, tablets e smartphones[cite: 3].
+  * **Visual:** Botões ovais de alto contraste com dupla codificação (cores distintas acompanhadas de numeração explícita de `1` a `4`), auxiliando jogadores com daltonismo.
+  * **Motora:** Suporte completo à interação via **toque** (mobile/tablet), **mouse** e **teclado numérico** (teclas `1` a `4`).
+  * **Sonora:** Feedback audiovisual sincronizado com botão dedicado para ativar ou silenciar o som (`Som: ligado/desligado`) em ambientes compartilhados.
+* **Design Responsivo:** Layout centralizado e adaptável para desktops, notebooks, tablets e smartphones.
 
 ---
 
