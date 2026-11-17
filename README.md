@@ -17,7 +17,7 @@
 
 ## Sobre o Projeto
 
-O **Genius Coração** é uma aplicação web interativa desenvolvida como projeto acadêmico na **Universidade Católica de Pernambuco (UNICAP)**[cite: 1, 3]. Inspirado no clássico brinquedo eletrônico *Simon/Genius*, o jogo substitui o tradicional formato circular por uma interface em formato de coração, focada em **usabilidade**, **acessibilidade** e **interação em grupo**[cite: 3, 5].
+O **Genius Coração** é uma aplicação web interativa desenvolvida como projeto acadêmico na **Universidade Católica de Pernambuco (UNICAP)**. Inspirado no clássico brinquedo eletrônico *Simon/Genius*, o jogo substitui o tradicional formato circular por uma interface em formato de coração, focada em **usabilidade**, **acessibilidade** e **interação em grupo**.
 
 ### Principais Funcionalidades
 
@@ -35,7 +35,7 @@ O **Genius Coração** é uma aplicação web interativa desenvolvida como proje
 Você pode jogar diretamente pelo navegador ou executar o projeto localmente na sua máquina:
 
 ### Opção 1: Acesso Direto Online (Recomendado)
-Não é necessário instalar nada. Basta acessar o link hospedado no GitHub Pages[cite: 3, 11]:
+Não é necessário instalar nada. Basta acessar o link hospedado no GitHub Pages:
 * **[https://jeanne-espindola.github.io/interface-design/](https://jeanne-espindola.github.io/interface-design/)**
 
 ### Opção 2: Executar Localmente
